@@ -82,9 +82,9 @@ def directorApp(login):
     add_statusp_button = Button(window, text='Добавление нового cтатуса товара',  width=30,
                             command=lambda: change_worker())
     add_statusp_button.grid(sticky="W", column=2, row=4)
-    add_statuso_button = Button(window, text='Добавление нового cтатуса заказа', width=30,
+    add_statuso_button = Button(window, text='Добавление нового товара', width=30,
                                 command=lambda: change_worker())
-    add_statuso_button.grid(sticky="W", column=2, row=3)
+    add_statuso_button.grid(sticky="W", column=2, row=5)
 
 #CHANGE
     category_change_Label = Label(window, text='Изменение', fg="black", bg="white")

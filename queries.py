@@ -93,15 +93,23 @@ class Query:
             else:
                 return "Директор"
 
-
-
-
     def getCustomerInfo(self, idUser):
         self.cursor.execute(f"Select id_customer, full_name, phone_number, email from Customer where id_user='{idUser}'")
         customerInfo = self.cursor.fetchone()
         return Customer(idUser, customerInfo.full_name, customerInfo.phone_number,
                         customerInfo.email)
     def getCatalog(self):
-        self.cursor.execute(f"SELECT name, price, available FROM Products")
-        return self.cursor.fetchone()
+        self.cursor.execute(f"SELECT * FROM Products")
+        products = self.cursor.fetchall()
+        arr_products = []
+        for value in products:
+            temp = Product(value[0], value[1], value[2], value[3], value[4], value[5])
+            arr_products.append(temp)
+        return arr_products
+    def getTopProducts(self):
+        self.cursor.execute(f"SELECT * FROM POPULAR_PRODUCTS")
+    def getProductStatuses(self):
+        self.cursor.execute(f"SELECT * FROM ProductStatus")
+        statuses = self.cursor.fetchall()
+        return statuses
 
