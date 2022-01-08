@@ -2,10 +2,11 @@ import tkinter
 from tkinter import *
 import tkinter.messagebox as mb
 from tkinter import ttk
+from datetime import datetime
 
 import login
 from queries import *
-wishlist = []
+
 label_font = ('Times New Roman', 10)
 
 def make_order():
@@ -44,6 +45,26 @@ def make_order():
     exit_button.grid(column=0, row=11, sticky='w')
     orderWindow.mainloop()
 
+def show_cart(cart, username, window):
+    window.destroy()
+    cartWindow = Tk()
+    cartWindow.title("Корзина")
+    cartWindow.geometry('600x400')
+    cartWindow['background'] = 'white'
+    s_cart = ''
+    for value in cart:
+        s_cart += value.to_string_wl() + '\n'
+    order_lbl = Label(cartWindow, text=s_cart, fg='black', bg='white')
+    order_lbl.grid(column=0, row=0)
+
+    address_ent = Entry(cartWindow, font=label_font, fg="black", bg="white", width=30)
+    address_ent.grid(column=0, row=1)
+
+    buy_btn = Button(cartWindow, text="Оформить заказ", fg='black', bg='white')
+    buy_btn.grid(column=0, row=2)
+
+    deny_btn = Button(cartWindow, text="Отменить и оставить заказ в корзине", fg='black', bg='white')
+    deny_btn.grid(column=0, row=3)
 
 
 def show_top_of_catalog():
@@ -84,27 +105,51 @@ def show_top_of_catalog():
             set.insert(parent='', index='end', iid=i, text='',
                        values=(products[i][1], products[i][4], status_i, price_i))
 
-def add_item(box, catalog, wishlist):
-    select = box.curselection()[0]
-    wishlist.append(catalog[select])
+def add_item(box, catalog, wishlist, wishlist_box):
+    if box.curselection() != ():
+        select = box.curselection()[0]
+        if catalog[select].quantity < catalog[select].available:
+
+            if catalog[select].quantity > 0:
+                catalog[select].add_one()
+                # wishlist[catalog[select].index] = catalog[select]
+                # ind_wl = wishlist.index(catalog[select])
+                # wishlist.append(catalog[select])
+                s_temp = wishlist[len(wishlist) - 1].to_string()
+                wishlist_box.insert(END, s_temp)
+            else:
+                catalog[select].add_one()
+                wishlist.append(catalog[select])
+                s_temp = wishlist[len(wishlist) - 1].to_string()
+                wishlist_box.insert(END, s_temp)
+
+        else:
+            print("больше этого товара нет") #cделать вывод в label
+
 
 
 def show_descr(box, description_text, catalog):
-    select = box.curselection()[0]
+    if box.curselection() != ():
+        select = box.curselection()[0]
 
-    tempText = "Описание: " + str(catalog[select].description)
-    description_text['text'] = tempText
+        tempText = "Описание: " + str(catalog[select].description)
+        description_text['text'] = tempText
 
 
 
-def save_list(box, wishlist):
+def add_to_cart(box, wishlist, username, window):
+    cart = wishlist
+    show_cart(cart, username, window)
+    # query.cursor.execute(f"MAKE_ORDER") # через queries.py делай
     print(box)
     for val in wishlist:
         print(val.name)
 
 
 
-def show_catalog_lb():
+def show_catalog_lb(username):
+    wishlist = []
+    cart = Cart()
     q=Query()
     catWindow = Tk()
     catWindow.title("Каталог")
@@ -117,7 +162,11 @@ def show_catalog_lb():
     scroll.grid(row=0, column=2)
     box.config(yscrollcommand=scroll.set)
 
-
+    wishbox = Listbox(catWindow, width=40, height=10)
+    wishbox.grid(row=0, column=5)
+    wishscroll = Scrollbar(catWindow, command=box.yview)
+    wishscroll.grid(row=0, column=6)
+    wishbox.config(yscrollcommand=wishscroll.set)
 
 
 
@@ -131,13 +180,13 @@ def show_catalog_lb():
     # description = Label(catWindow, text=description_text, font=label_font, fg='black', bg='white')
     # description.grid(row=0, column=4)
     description = Label(catWindow, text="Описание:")
-    description.grid(row=0, column=3)
+    description.grid(row=2, column=0)
 
-    add_btn = Button(catWindow, text="Add to wishlist", command=lambda: add_item(box, catalog, wishlist))
+    add_btn = Button(catWindow, text="Add to wishlist", command=lambda: add_item(box, catalog, wishlist, wishbox))
     add_btn.grid(row=0, column=3)
     description_btn = Button(catWindow, text="Show description", command=lambda: show_descr(box, description, catalog))
     description_btn.grid(row=1, column=3)
-    cart_btn = Button(catWindow, text="Add to cart", command=lambda: save_list(box, wishlist))
+    cart_btn = Button(catWindow, text="Add to cart", command=lambda: add_to_cart(box, wishlist, username, catWindow))
     cart_btn.grid(row=2, column=3)
     catWindow.mainloop()
 
@@ -329,7 +378,7 @@ def customerApp(username):
                 space_i = Label(window, text='          ..', fg='white', bg='white')
                 space_i.grid(sticky='W', column=i, row=j)
 #ПРОСМОТР
-    catalog_btn = Button(window, text='Посмотреть товары', fg="black", bg="white", width=30, command=lambda: show_catalog_lb())
+    catalog_btn = Button(window, text='Посмотреть товары', fg="black", bg="white", width=30, command=lambda: show_catalog_lb(username))
     catalog_btn.grid(sticky="W", column=0, row=1)
     class_book_button = Button(window, text='Посмотреть свои заказы', fg="black", bg="white", width=30)
     class_book_button.grid(sticky="W", column=0, row=2)

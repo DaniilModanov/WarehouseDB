@@ -30,12 +30,23 @@ class Cart:
 
 
 class Product:
-    def __init__(self, id_product, name, price, status_product, description, quantity_product):
+    def __init__(self, id_product, name, price, status_product, description, available):
         self.id = id_product
         self.name = name
         self.price = price
         self.status = status_product
         self.description = description
-        self.quantity = quantity_product
+        self.available = available
+        self.quantity = 0
     def to_string(self):
-        return str(self.name) + ' ' + str(self.price) + ' ' + str(self.quantity)
+        temp_money = str(self.price)
+        temp_money = temp_money[:-2]
+        return str(self.name) + ' ' + temp_money
+
+    def to_string_wl(self):
+        temp_money = str(self.price)
+        temp_money = temp_money[:-2]
+        return str(self.name) + ' ' + temp_money + ' ' + str(self.quantity)
+
+    def add_one(self):
+        self.quantity += 1
