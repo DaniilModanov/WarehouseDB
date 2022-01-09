@@ -1,6 +1,7 @@
 import pyodbc
 import bcrypt
 from tools import *
+from datetime import datetime
 
 key = b'$2b$12$QOVGUfNiqGURvVHgFtuwc.'
 
@@ -67,14 +68,14 @@ class Query:
             f"SELECT id_customer FROM Customer JOIN Users ON Users.id_user = Customer.id_user AND Users.id_user='{idUser}'")
         id_customer = self.cursor.fetchone()
         if id_customer:
-            customer_info = self.cursor.execute(f"SELECT full_name, email, phone_number FROM Customer JOIN Users ON Users.id_user = Customer.id_user AND Users.id_user='{idUser}'")
-            return Customer(idUser, "Покупатель", customer_info.full_name, customer_info.phone_number, customer_info.email)
+            customer_info = self.cursor.execute(f"SELECT id_customer, full_name, email, phone_number FROM Customer JOIN Users ON Users.id_user = Customer.id_user AND Users.id_user='{idUser}'")
+            return Customer(idUser, "Покупатель", customer_info.full_name, customer_info.phone_number, customer_info.email, customer_info.id_customer)
         else:
             self.cursor.execute(
-                f"SELECT full_name, email, phone_number FROM WarehouseWorker JOIN Users ON Users.id_user = WarehouseWorker.id_user AND Users.id_user='{idUser}'")
+                f"SELECT id_worker, full_name, email, phone_number FROM WarehouseWorker JOIN Users ON Users.id_user = WarehouseWorker.id_user AND Users.id_user='{idUser}'")
             worker_info = self.cursor.fetchone()
             if worker_info:
-                return Worker(idUser, "Кладовщик", worker_info.full_name, worker_info.phone_number, worker_info.email)
+                return Worker(idUser, "Кладовщик", worker_info.full_name, worker_info.phone_number, worker_info.email, worker_info.id_worker)
             else:
                 return User(idUser, "Директор")
 
@@ -97,7 +98,7 @@ class Query:
         self.cursor.execute(f"Select id_customer, full_name, phone_number, email from Customer where id_user='{idUser}'")
         customerInfo = self.cursor.fetchone()
         return Customer(idUser, customerInfo.full_name, customerInfo.phone_number,
-                        customerInfo.email)
+                        customerInfo.email, customerInfo.id_customer)
     def getCatalog(self):
         self.cursor.execute(f"SELECT * FROM Products")
         products = self.cursor.fetchall()
@@ -113,3 +114,47 @@ class Query:
         statuses = self.cursor.fetchall()
         return statuses
 
+    def create_and_pay_order(self, customer, cart, address):
+        date = datetime.today().strftime('%Y-%m-%d')
+        user_id = customer.idCustomer
+        total = 0
+        self.cursor.execute(f"MAKE_AND_PAY_ORDER {user_id}, '{date}', '{address}', {cart[0].id}, {cart[0].quantity}")
+        self.connection_to_db.commit()
+        total += cart[0].price * cart[0].quantity
+        self.cursor.execute(f"SELECT COUNT(id_order) FROM Orders")
+        last_index = self.cursor.fetchone()[0]
+        for i in range(1, len(cart)):
+            self.cursor.execute(f"ADD_GOOD_TO_ORDER {cart[i].id}, {last_index}, {cart[i].quantity}")
+            self.connection_to_db.commit()
+            total += cart[i].price * cart[i].quantity
+
+        self.cursor.execute(f"UPDATE Orders SET total_price={total} WHERE Orders.id_order={last_index}")
+
+    def createOrder(self, customer, cart, address):
+        date = datetime.today().strftime('%Y-%m-%d')
+        user_id = customer.idCustomer
+        total = 0
+        self.cursor.execute(f"MAKE_ORDER {user_id}, '{date}', '{address}', {cart[0].id}, {cart[0].quantity}")
+        self.connection_to_db.commit()
+        total += cart[0].price * cart[0].quantity
+        self.cursor.execute(f"SELECT COUNT(id_order) FROM Orders")
+        last_index = self.cursor.fetchone()[0]
+        for i in range(1, len(cart)):
+            self.cursor.execute(f"ADD_GOOD_TO_ORDER {cart[i].id}, {last_index}, {cart[i].quantity}")
+            self.connection_to_db.commit()
+            total += cart[i].price * cart[i].quantity
+
+        self.cursor.execute(f"UPDATE Orders SET total_price={total} WHERE Orders.id_order={last_index}")
+
+    def getCustomerOrders(self, customer):
+        self.cursor.execute(f"""SELECT Customer.full_name AS Customer, WarehouseWorker.full_name AS Worker, OrderStatus.status, created_at, total_price FROM Orders
+	                            JOIN Customer ON Customer.id_customer=Orders.customer_id
+	                            JOIN WarehouseWorker ON WarehouseWorker.id_worker=Orders.worker_id
+	                            JOIN OrderStatus ON OrderStatus.status_id=Orders.id_status
+	                            WHERE Customer.id_customer={customer.idCustomer}""")
+        return self.cursor.fetchall()
+
+    def getOrderStatuses(self):
+        self.cursor.execute(f"SELECT * FROM OrderStatus")
+        statuses = self.cursor.fetchall()
+        return statuses

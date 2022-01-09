@@ -1,8 +1,6 @@
-import tkinter
 from tkinter import *
 import tkinter.messagebox as mb
 from tkinter import ttk
-from datetime import datetime
 
 import login
 from queries import *
@@ -45,6 +43,49 @@ def make_order():
     exit_button.grid(column=0, row=11, sticky='w')
     orderWindow.mainloop()
 
+
+def create_order(username, cart, address_ent, window):
+    q = Query()
+    address = address_ent.get()
+    wrong_password_label = Label(window, text='', font=label_font, foreground='red')
+    wrong_password_label['background'] = 'white'
+    wrong_password_label.grid(row=1, column=2)
+    if address_ent.get() != '' and has_letter(address_ent.get()) and has_number(address_ent.get()) and has_point(address_ent.get()):
+        customer_id = q.getUserIdByLogin(username)
+        customer = q.getCustomerInfo(customer_id)
+        print(customer.to_string())
+        print(address)
+        q.create_and_pay_order(customer, cart, address_ent.get())
+        for value in cart:
+            print(value.to_string_wl())
+        wrong_password_label.destroy()
+        address_ent.delete(0, END)
+
+        window.destroy()
+    else:
+        address_ent.delete(0, END)
+        address_ent.insert(0, 'Некорректный адрес')
+
+def put_to_cart(username, cart, address_ent, cartWindow):
+    q = Query()
+    address = address_ent.get()
+    wrong_password_label = Label(cartWindow, text='', font=label_font, foreground='red')
+    wrong_password_label['background'] = 'white'
+    wrong_password_label.grid(row=1, column=2)
+    if address_ent.get() != '' and has_letter(address_ent.get()) and has_number(address_ent.get()) and has_point(address_ent.get()):
+        customer_id = q.getUserIdByLogin(username)
+        customer = q.getCustomerInfo(customer_id)
+        q.createOrder(customer, cart, address_ent.get())
+
+        wrong_password_label.destroy()
+        address_ent.delete(0, END)
+
+        cartWindow.destroy()
+    else:
+        address_ent.delete(0, END)
+        address_ent.insert(0, 'Некорректный адрес')
+
+
 def show_cart(cart, username, window):
     window.destroy()
     cartWindow = Tk()
@@ -60,10 +101,10 @@ def show_cart(cart, username, window):
     address_ent = Entry(cartWindow, font=label_font, fg="black", bg="white", width=30)
     address_ent.grid(column=0, row=1)
 
-    buy_btn = Button(cartWindow, text="Оформить заказ", fg='black', bg='white')
+    buy_btn = Button(cartWindow, text="Оформить заказ", fg='black', bg='white', command=lambda: create_order(username, cart, address_ent, cartWindow))
     buy_btn.grid(column=0, row=2)
 
-    deny_btn = Button(cartWindow, text="Отменить и оставить заказ в корзине", fg='black', bg='white')
+    deny_btn = Button(cartWindow, text="Отменить и оставить заказ в корзине", fg='black', bg='white', command=lambda: put_to_cart(cart, address_ent, cartWindow))
     deny_btn.grid(column=0, row=3)
 
 
@@ -112,16 +153,19 @@ def add_item(box, catalog, wishlist, wishlist_box):
 
             if catalog[select].quantity > 0:
                 catalog[select].add_one()
-                # wishlist[catalog[select].index] = catalog[select]
-                # ind_wl = wishlist.index(catalog[select])
-                # wishlist.append(catalog[select])
-                s_temp = wishlist[len(wishlist) - 1].to_string()
-                wishlist_box.insert(END, s_temp)
+                wishlist_box.delete(0, END)
+                for val in wishlist:
+                    if val.quantity > 0:
+                        s_temp = val.to_string_wl()
+                        wishlist_box.insert(END, s_temp)
             else:
                 catalog[select].add_one()
                 wishlist.append(catalog[select])
-                s_temp = wishlist[len(wishlist) - 1].to_string()
-                wishlist_box.insert(END, s_temp)
+                wishlist_box.delete(0, END)
+                for val in wishlist:
+                    if val.quantity > 0:
+                        s_temp = val.to_string_wl()
+                        wishlist_box.insert(END, s_temp)
 
         else:
             print("больше этого товара нет") #cделать вывод в label
@@ -131,21 +175,34 @@ def add_item(box, catalog, wishlist, wishlist_box):
 def show_descr(box, description_text, catalog):
     if box.curselection() != ():
         select = box.curselection()[0]
-
         tempText = "Описание: " + str(catalog[select].description)
         description_text['text'] = tempText
 
 
 
 def add_to_cart(box, wishlist, username, window):
-    cart = wishlist
-    show_cart(cart, username, window)
-    # query.cursor.execute(f"MAKE_ORDER") # через queries.py делай
-    print(box)
-    for val in wishlist:
-        print(val.name)
+    if len(wishlist) > 0:
+        cart = wishlist
+        show_cart(cart, username, window)
+
+def del_item(list_of_wishes, box_of_selected):
+    if box_of_selected.curselection() != ():
+        select = box_of_selected.curselection()[0]
+
+        list_of_wishes[select].remove_one()
+
+        if list_of_wishes[select].quantity == 0:
+            list_of_wishes.remove(list_of_wishes[select])
 
 
+        box_of_selected.delete(0, END)
+        for val in list_of_wishes:
+            if val.quantity > 0:
+                s_temp = val.to_string_wl()
+                box_of_selected.insert(END, s_temp)
+
+def exit_from_cat(window):
+    window.destroy()
 
 def show_catalog_lb(username):
     wishlist = []
@@ -153,41 +210,45 @@ def show_catalog_lb(username):
     q=Query()
     catWindow = Tk()
     catWindow.title("Каталог")
-    catWindow.geometry('550x400')
+    catWindow.geometry('650x400')
     catWindow['background'] ='white'
+
+    cat_lbl = Label(catWindow, text='Каталог', fg="black", bg="white")
+    cat_lbl.grid(row=0, column=0)
+    wish_lbl = Label(catWindow, text='Cписок желаемого', fg="black", bg="white")
+    wish_lbl.grid(row=0, column=5)
     box = Listbox(catWindow, width=40, height=10)
 
-    box.grid(row=0, column=0)
+    box.grid(row=1, column=0)
     scroll = Scrollbar(catWindow, command=box.yview)
-    scroll.grid(row=0, column=2)
+    scroll.grid(row=1, column=2)
     box.config(yscrollcommand=scroll.set)
 
     wishbox = Listbox(catWindow, width=40, height=10)
-    wishbox.grid(row=0, column=5)
+    wishbox.grid(row=1, column=5)
     wishscroll = Scrollbar(catWindow, command=box.yview)
-    wishscroll.grid(row=0, column=6)
+    wishscroll.grid(row=1, column=6)
     wishbox.config(yscrollcommand=wishscroll.set)
-
-
 
     catalog = q.getCatalog()
     for value in catalog:
         temp = value.to_string()
         box.insert(END, temp)
 
-    # description_text = tkinter.StringVar(catWindow)
-    # description_text.set('Описание: Выберите товар')
-    # description = Label(catWindow, text=description_text, font=label_font, fg='black', bg='white')
-    # description.grid(row=0, column=4)
-    description = Label(catWindow, text="Описание:")
-    description.grid(row=2, column=0)
+    description = Label(catWindow, text="Описание:", fg="black", bg="white")
+    description.grid(row=3, column=0)
 
-    add_btn = Button(catWindow, text="Add to wishlist", command=lambda: add_item(box, catalog, wishlist, wishbox))
-    add_btn.grid(row=0, column=3)
-    description_btn = Button(catWindow, text="Show description", command=lambda: show_descr(box, description, catalog))
-    description_btn.grid(row=1, column=3)
-    cart_btn = Button(catWindow, text="Add to cart", command=lambda: add_to_cart(box, wishlist, username, catWindow))
-    cart_btn.grid(row=2, column=3)
+    add_btn = Button(catWindow, text="Добавить в желаемое", fg="black", bg="white", command=lambda: add_item(box, catalog, wishlist, wishbox))
+    add_btn.grid(row=2, column=3)
+    description_btn = Button(catWindow, text="Показать описание", fg="black", bg="white", command=lambda: show_descr(box, description, catalog))
+    description_btn.grid(row=3, column=3)
+    cart_btn = Button(catWindow, text="Добавить в корзину", fg="black", bg="white", command=lambda: add_to_cart(box, wishlist, username, catWindow))
+    cart_btn.grid(row=2, column=5)
+    del_btn = Button(catWindow, text="Убрать из желаемого", fg="black", bg="white", command=lambda: del_item(wishlist, wishbox))
+    del_btn.grid(row=5, column=3)
+    # log_out_button = Button(catWindow, text='Выйти', fg="black", bg="white", command=lambda: exit_from_cat(catWindow))
+    # log_out_button.grid(sticky="W", column=0, row=5)
+
     catWindow.mainloop()
 
 
@@ -196,7 +257,7 @@ def show_catalog():
 
     catWindow = Tk()
     catWindow.title("Каталог")
-    catWindow.geometry('550x400')
+    catWindow.geometry('600x400')
     catWindow['background'] ='white'
 
     set = ttk.Treeview(catWindow)
@@ -224,13 +285,13 @@ def show_catalog():
     for i in range(len(products)):
         status_i = ""
         for j in range(len(statuses)):
-            if products[i][3] == statuses[j][0]:
+            if products[i].status == statuses[j][0]:
                 status_i = statuses[j][1]
-        price_i = products[i][2]
+        price_i = products[i].price
 
         if status_i != "":
             set.insert(parent='', index='end', iid=i, text='',
-                   values=(products[i][1], products[i][4], status_i, price_i))
+                   values=(products[i].name, products[i].description, status_i, price_i))
 
 
     catWindow.mainloop()
@@ -351,6 +412,80 @@ def change_info(window, user):
     exit_button.grid(column=0, row=11, sticky='w')
     window.mainloop()
 
+def decline_orders(customer_info):
+    ordersWindow = Tk()
+    ordersWindow.title("Ваши заказы")
+    ordersWindow.geometry('500x300')
+    ordersWindow['background'] = 'white'
+
+    q = Query()
+
+    statuses = q.getOrderStatuses()
+    orders_tuple = q.getCustomerOrders(customer_info)
+    orders = []
+    for val in orders_tuple:
+        for val_status in statuses:
+            if val[3] == val_status[0]:
+                # temp = Order(int(val[0]), int(val[1]), int(val[2]), val_status[1], str(val[4]), val[5], val[6])
+                orders.append(Order(int(val[0]), int(val[1]), int(val[2]), val_status[1], str(val[4]), val[5], val[6]))
+
+    title_lbl = Label(ordersWindow, text='Заказы:', font=label_font, fg="black", bg="white")
+    title_lbl.grid(row=0, column=0)
+
+    box = Listbox(ordersWindow, width=80, height=10)
+
+    box.grid(row=1, column=0)
+    scroll = Scrollbar(ordersWindow, command=box.yview)
+    scroll.grid(row=1, column=1)
+    box.config(yscrollcommand=scroll.set)
+
+    for val in orders:
+        s_temp = val.to_string()
+        box.insert(END, s_temp)
+
+    pay_btn = Button(ordersWindow, text="Отменить заказ", font=label_font, fg='black', bg='white')
+    pay_btn.grid(row=2, column=0)
+
+def non_payed_orders(customer):
+    ordersWindow = Tk()
+    ordersWindow.title("Ваши неоплаченные заказы")
+    ordersWindow.geometry('500x300')
+    ordersWindow['background'] = 'white'
+
+    q = Query()
+
+    statuses = q.getOrderStatuses()
+    orders_tuple = q.getCustomerOrders(customer)
+    orders = []
+    for val in orders_tuple:
+        for val_status in statuses:
+            if val[3] == val_status[0]:
+                # temp = Order(int(val[0]), int(val[1]), int(val[2]), val_status[1], str(val[4]), val[5], val[6])
+                orders.append(Order(int(val[0]), int(val[1]), int(val[2]), val_status[1], str(val[4]), val[5], val[6]))
+
+    title_lbl = Label(ordersWindow, text='Неоплаченные заказы', font=label_font, fg="black", bg="white")
+    title_lbl.grid(row=0, column=0)
+
+    orders_in_cart = []
+
+    for val in orders:
+        if val.status == "In cart":
+            orders_in_cart.append(val)
+    box = Listbox(ordersWindow, width=80, height=10)
+
+    box.grid(row=1, column=0)
+    scroll = Scrollbar(ordersWindow, command=box.yview)
+    scroll.grid(row=1, column=1)
+    box.config(yscrollcommand=scroll.set)
+
+    for val in orders_in_cart:
+        s_temp = val.to_string()
+        box.insert(END, s_temp)
+
+    pay_btn = Button(ordersWindow, text="Оплатить заказ", font=label_font, fg='black', bg='white')
+    pay_btn.grid(row=2, column=0)
+
+
 
 
 def customerApp(username):
@@ -386,14 +521,14 @@ def customerApp(username):
                          command=lambda: show_catalog())
     catalog_btn.grid(sticky="W", column=0, row=3)
 #ADD
-    timetable_button = Button(window, text='Создать заказ', fg="black", bg="white", width=30,)
+    timetable_button = Button(window, text='Оплатить заказы', fg="black", bg="white", width=30, command=lambda: non_payed_orders(customer_info))
     timetable_button.grid(sticky="W", column=2, row=1)
 #CHANGE
-    grades_button = Button(window, text='Отменить заказ', fg="black", bg="white", width=30,)
-    grades_button.grid(sticky="W", column=4, row=1)
+    grades_button = Button(window, text='Отменить заказы', fg="black", bg="white", width=30,command=lambda: decline_orders(customer_info))
+    grades_button.grid(sticky="W", column=2, row=1)
     change_info_button = Button(window, text='Изменить данные', fg="black", bg="white", width=30,
                                 command=lambda: change_info(window, username))
-    change_info_button.grid(sticky="E", column=4, row=2)
+    change_info_button.grid(sticky="E", column=4, row=1)
 
     log_out_button = Button(window, text='Выйти', fg="black", bg="white", command=lambda: log_out(window))
     log_out_button.grid(sticky="W", column=0, row=4)
@@ -405,4 +540,7 @@ def customerApp(username):
 
 def cart(username):
     cartWindow = Tk()
+    log_out_button = Button(cartWindow, text='Выйти', fg="black", bg="white", command=lambda: exit_from_cat(cartWindow))
+    log_out_button.grid(sticky="W", column=0, row=0)
+    cartWindow.mainloop()
 
