@@ -104,7 +104,7 @@ def show_cart(cart, username, window):
     buy_btn = Button(cartWindow, text="Оформить заказ", fg='black', bg='white', command=lambda: create_order(username, cart, address_ent, cartWindow))
     buy_btn.grid(column=0, row=2)
 
-    deny_btn = Button(cartWindow, text="Отменить и оставить заказ в корзине", fg='black', bg='white', command=lambda: put_to_cart(cart, address_ent, cartWindow))
+    deny_btn = Button(cartWindow, text="Отменить и оставить заказ в корзине", fg='black', bg='white', command=lambda: put_to_cart(username, cart, address_ent, cartWindow))
     deny_btn.grid(column=0, row=3)
 
 

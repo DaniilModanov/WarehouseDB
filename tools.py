@@ -5,8 +5,16 @@ def has_number(inputString):
 
 def has_letter(inputString):
     return any(char.isalpha() for char in inputString)
+
+
 def has_point(inputString):
     return any(char == '.' for char in inputString)
+
+def has_dog(inputString):
+    return any(char == '@' for char in inputString)
+
+def has_plus(inputString):
+    return any(char == '+' for char in inputString)
 
 class User:
     def __init__(self, idUser, status,idLocal = None):
@@ -15,7 +23,7 @@ class User:
 
 
 class Worker(User):
-    def __init__(self, idUser, idLocal, name, phoneNumber, email, idWorker):
+    def __init__(self, idUser, name, phoneNumber, email, idWorker):
         super().__init__(idUser, status)
         self.full_name = name
         self.email = email
@@ -31,7 +39,6 @@ class Customer(User):
         self.idCustomer = idCustomer
     def to_string(self):
         return self.full_name + ' ' + self.email + ' ' + self.phoneNumber
-
 
 class Cart:
     def __init__(self):

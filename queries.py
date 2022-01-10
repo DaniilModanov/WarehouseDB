@@ -52,6 +52,11 @@ class Query:
         self.cursor.execute(f"EXEC ADD_WORKER '{login}', '{password.decode()}','{full_name}', '{phone_number}', '{email}'")
         self.connection_to_db.commit()
 
+    def addGood(self, name, price, status_id, description, amount):
+        price = int(price)
+        self.cursor.execute(f"EXEC ADD_PRODUCT '{name}', {price}, {int(status_id)}, '{description}', {int(amount)}")
+        self.connection_to_db.commit()
+
     def regDirector(self, login, password):
         password = bcrypt.hashpw(str.encode(password), key)
 
@@ -158,3 +163,85 @@ class Query:
         self.cursor.execute(f"SELECT * FROM OrderStatus")
         statuses = self.cursor.fetchall()
         return statuses
+
+    def getCustomerByEmail(self, email):
+        self.cursor.execute(f"""SELECT id_customer, Customer.id_user, login, password, full_name, phone_number, email
+                                FROM Customer, Users
+                                WHERE Customer.id_user=Users.id_user AND Customer.email='{email}'""")
+        user = self.cursor.fetchall()
+        customer = Customer(user[0][1], user[0][4], user[0][5], user[0][6], user[0][0])
+        return customer, user[0][2]
+
+    def getCustomerByPhone(self, number):
+        self.cursor.execute(f"""SELECT id_customer, Customer.id_user, login, password, full_name, phone_number, email
+                                FROM Customer, Users
+                                WHERE Customer.id_user=Users.id_user AND Customer.phone_number='{number}'""")
+        user = self.cursor.fetchall()
+        customer = Customer(user[0][1], user[0][4], user[0][5], user[0][6], user[0][0])
+        return customer, user[0][2]
+
+    def getWorkerByEmail(self, email):
+        self.cursor.execute(f"""SELECT id_worker, WarehouseWorker.id_user, login, password, full_name, phone_number, email
+                                FROM WarehouseWorker, Users
+                                WHERE WarehouseWorker.id_user=Users.id_user AND WarehouseWorker.email='{email}'""")
+        user = self.cursor.fetchall()
+        worker = Worker(user[0][1], user[0][4], user[0][5], user[0][6], user[0][0])
+        return worker, user[0][2]
+
+    def getWorkerByPhone(self, number):
+        self.cursor.execute(f"""SELECT id_worker, WarehouseWorker.id_user, login, password, full_name, phone_number, email
+                                FROM WarehouseWorker, Users
+                                WHERE WarehouseWorker.id_user=Users.id_user AND WarehouseWorker.phone_number='{number}'""")
+        user = self.cursor.fetchall()
+        worker = Worker(user[0][1], user[0][4], user[0][5], user[0][6], user[0][0])
+        return worker, user[0][2]
+
+    def editGood(self,id, name, price, status, description, amount):
+        self.cursor.execute(f"SELECT name, price, description, available FROM Products WHERE id_product={int(id)}")
+        current = self.cursor.fetchall()
+        old_price = int(current[0][1])
+        old_name = current[0][0]
+        old_descr = current[0][2]
+        old_available = current[0][3]
+        statuses = self.getProductStatuses()
+        code = []
+        for val in statuses:
+            code.append(int(val[0]))
+        if name != '':
+            self.cursor.execute(f"UPDATE Products SET name='{name} WHERE id_product={int(id)}'")
+            self.connection_to_db.commit()
+        if price != '':
+            self.cursor.execute(f"UPDATE Products SET price={int(price)} WHERE id_product={int(id)}")
+            self.connection_to_db.commit()
+        if description != '':
+            self.cursor.execute(f"UPDATE Products SET description={description} WHERE id_product={int(id)}")
+            self.connection_to_db.commit()
+        if status != '' and int(status) in code:
+            self.cursor.execute(f"UPDATE Products SET status_product={status} WHERE id_product={int(id)}")
+            self.connection_to_db.commit()
+        if amount != '':
+            self.cursor.execute(f"UPDATE Products SET available={int(amount)} WHERE id_product={int(id)}")
+            self.connection_to_db.commit()
+
+        self.cursor.execute(f"SELECT order_id, quantity FROM OrderItems WHERE product_id={int(id)}")
+        orders = self.cursor.fetchall()
+
+        o_statuses = self.getOrderStatuses()
+        status_in_cart = -1
+        for val in o_statuses:
+            if val[1] == "In Cart":
+                status_in_cart = val[0]
+
+        for val in orders:
+            current_id = int(val[0])
+            current_quantity = int(val[1])
+            self.cursor.execute(f"SELECT id_status FROM Orders WHERE id_order={current_id}")
+            current_status = self.cursor.fetchall()[0][0]
+
+            self.cursor.execute(f"SELECT total_price FROM Orders WHERE id_order={current_id}")
+            old_total = self.cursor.fetchall()[0][0]
+            if price != '' and current_status == status_in_cart:
+                new_total = old_total - int(old_price) * current_quantity + int(price) * current_quantity
+                self.cursor.execute(f"UPDATE Orders SET total_price={new_total} WHERE id_order={current_id}")
+                self.connection_to_db.commit()
+
